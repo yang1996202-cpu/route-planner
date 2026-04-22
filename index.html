@@ -1,0 +1,3059 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高德地图顺路规划系统 - 正式版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        /* 左侧面板样式 */
+        .sidebar {
+            width: 400px;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+        }
+        
+        .header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(17, 153, 142, 0.4);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        /* 公司列表样式 */
+        .company-list {
+            margin-top: 15px;
+        }
+        
+        .company-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border-left: 4px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .company-info {
+            flex: 1;
+        }
+        
+        .company-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+        
+        .company-address {
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .company-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-small {
+            padding: 4px 10px;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        
+        .btn-delete {
+            background: #ff6b6b;
+            color: white;
+        }
+        
+        /* 批量导入区域 */
+        .batch-import {
+            background: #f0f0f0;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        
+        .batch-import textarea {
+            width: 100%;
+            height: 80px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 11px;
+            resize: vertical;
+            font-family: monospace;
+        }
+        
+        /* 地图区域样式 */
+        .map-area {
+            flex: 1;
+            position: relative;
+            background: #f5f5f5;
+        }
+        
+        #container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* 结果区域样式 */
+        .result-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            max-width: 350px;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+            z-index: 200;
+        }
+        
+        .result-panel.show {
+            display: block;
+            animation: slideUp 0.4s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(15px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .result-header {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #333;
+        }
+        
+        .result-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .stat-item {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #666;
+            margin-top: 3px;
+        }
+        
+        .route-list {
+            list-style: none;
+        }
+        
+        .route-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .route-number {
+            width: 24px;
+            height: 24px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+            flex-shrink: 0;
+            font-size: 11px;
+        }
+        
+        .route-info {
+            flex: 1;
+        }
+        
+        .route-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
+        }
+        
+        .route-address {
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+            font-size: 13px;
+        }
+        
+        .toast.error {
+            background: #ef4444;
+        }
+        
+        .toast.success {
+            background: #10b981;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            z-index: 1000;
+            display: none;
+            font-size: 14px;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .loading::after {
+            content: '';
+            display: block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            margin: 8px auto 0;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* 调试日志样式 */
+        .debug-log {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 350px;
+            background: rgba(0, 0, 0, 0.85);
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            border-radius: 6px;
+            overflow: hidden;
+            z-index: 9999;
+            border: 1px solid #333;
+            transition: all 0.3s ease;
+        }
+        
+        /* 收起状态 */
+        .debug-log.collapsed {
+            max-height: 32px;
+        }
+        
+        /* 展开状态 */
+        .debug-log.expanded {
+            max-height: 300px;
+        }
+        
+        .debug-log-header {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 12px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+        
+        .debug-log-header:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .debug-log-title {
+            color: #fff;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .debug-log-toggle {
+            color: #888;
+            font-size: 16px;
+            transition: transform 0.3s ease;
+        }
+        
+        .debug-log.expanded .debug-log-toggle {
+            transform: rotate(180deg);
+        }
+        
+        .debug-log-content {
+            padding: 12px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        
+        .debug-log.collapsed .debug-log-content {
+            display: none;
+        }
+        
+        .debug-log .log-entry {
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+        
+        .debug-log .log-time {
+            color: #888;
+            margin-right: 5px;
+        }
+        
+        .debug-log .log-success {
+            color: #00ff00;
+        }
+        
+        .debug-log .log-error {
+            color: #ff4444;
+        }
+        
+        .debug-log .log-info {
+            color: #00bfff;
+        }
+        
+        .debug-log .log-warning {
+            color: #ffaa00;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: 50vh;
+            }
+            
+            .map-area {
+                height: 50vh;
+            }
+            
+            .result-panel {
+                max-width: calc(100% - 40px);
+                bottom: 10px;
+                right: 20px;
+                left: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧面板 -->
+        <div class="sidebar">
+            <div class="header">
+                <h1>🗺️ 顺路规划系统 1.0</h1>
+            </div>
+            
+            <div class="content">
+                <!-- 批量导入 -->
+                <div class="batch-import">
+                    <label style="font-weight: 700; color: #333; margin-bottom: 8px; display: block; font-size: 14px;">
+                        📥 批量导入（公司名字和地址）
+                    </label>
+                    <textarea id="batchImport" placeholder="微软科技,北京市海淀区中关村&#10;阿里巴巴,北京市朝阳区望京&#10;（支持 , | ; Tab 分隔）"></textarea>
+                    <button class="btn btn-success" onclick="showBatchImportModal()" style="margin-top: 8px;">开始智能导入</button>
+                </div>
+                
+                <!-- 单条添加 -->
+                <div style="border-top: 1px dashed #ddd; padding-top: 15px; margin-top: 15px;">
+                    <label style="font-weight: 600; color: #666; margin-bottom: 8px; display: block; font-size: 11px;">
+                        ➕ 单条添加（同名将覆盖更新）
+                    </label>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <input type="text" id="quickCompanyName" placeholder="公司名" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="quickCompanyAddress" placeholder="地址" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
+                        <button onclick="quickAddCompany()" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">添加</button>
+                    </div>
+                </div>
+                
+                <!-- 公司列表 -->
+                <div class="company-list" id="companyList">
+                    <p style="color: #999; text-align: center; padding: 15px; font-size: 12px;">暂无公司信息，请添加或导入</p>
+                </div>
+                
+                <!-- 规划路线按钮 -->
+                <button class="btn btn-success" onclick="planRoute()" style="margin-top: 15px; font-size: 16px;">
+                    🚀 规划最优路线
+                </button>
+                
+                <!-- 清空按钮 -->
+                <button class="btn btn-danger" onclick="clearAll()" style="margin-top: 8px;">
+                    🗑️ 清空所有数据
+                </button>
+                
+                <!-- 调试日志（移到底部） -->
+                <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
+                    <div style="background: #1a1a2e; border-radius: 6px; overflow: hidden;">
+                        <div style="padding: 8px 12px; background: #16213e; color: #fff; font-size: 12px; cursor: pointer;" onclick="toggleBottomLog()">
+                            <span>🔍 调试日志</span>
+                            <span id="bottomLogToggle" style="float: right;">▼</span>
+                        </div>
+                        <div id="bottomLogContent" style="padding: 10px; max-height: 150px; overflow-y: auto; font-family: monospace; font-size: 11px; color: #00ff00; display: block;">
+                            <!-- 日志内容 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 地图区域 -->
+        <div class="map-area">
+            <div id="container"></div>
+            
+            <!-- 结果面板 -->
+            <div class="result-panel" id="resultPanel">
+                <div class="result-header">📊 路线规划结果</div>
+                <div class="result-stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalDistance">0</div>
+                        <div class="stat-label">总里程(km)</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalTime">0</div>
+                        <div class="stat-label">预计时间(分钟)</div>
+                    </div>
+                </div>
+                <div class="result-header" style="font-size: 12px; margin-bottom: 8px;">拜访顺序</div>
+                <ul class="route-list" id="routeList">
+                    <!-- 路线列表将通过JS动态生成 -->
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 批量导入模态框 -->
+    <div class="modal" id="batchModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000;">
+        <div class="modal-content" style="background: white; border-radius: 10px; width: 90%; max-width: 600px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column;">
+            <div class="modal-header" style="padding: 15px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 18px;">📥 批量智能导入</h3>
+                <button onclick="closeBatchModal()" style="background: rgba(255,255,255,0.2); border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 18px;">×</button>
+            </div>
+            <div class="modal-body" style="padding: 20px; flex: 1; overflow-y: auto;">
+                <div style="background: #f8f9fa; margin-bottom: 15px;">
+                    <textarea id="batchImportModal" style="width: 100%; height: 120px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; font-family: monospace; resize: vertical;" placeholder="示例:&#10;腾讯科技,北京市海淀区中关村&#10;阿里巴巴,北京市朝阳区望京&#10;百度科技,北京市海淀区上地"></textarea>
+                </div>
+                
+                <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 10px; margin-top: 10px; font-size: 12px; color: #856404;">
+                    💡 提示：系统将自动搜索每个地址并获取精确坐标，请耐心等待处理完成
+                </div>
+                
+                <div style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button class="btn btn-success" onclick="processBatchImport()">开始处理</button>
+                    <button class="btn btn-secondary" onclick="closeBatchModal()">取消</button>
+                </div>
+                
+                <div id="batchProgress" style="margin-top: 15px; display: none;">
+                    <div style="background: #e9ecef; border-radius: 4px; height: 8px; overflow: hidden;">
+                        <div id="progressBar" style="background: linear-gradient(90deg, #667eea, #764ba2); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                    </div>
+                    <p style="text-align: center; margin-top: 8px; font-size: 12px; color: #666;" id="progressText">处理中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 加载提示 -->
+    <div class="loading" id="loading">处理中，请稍候...</div>
+
+    <!-- 配置安全密钥 -->
+    <script>
+        window._AMapSecurityConfig = {
+            securityJsCode: '04b5d875bd866929bd8881f69c392a48',
+        }
+    </script>
+
+    <!-- 加载高德地图API -->
+    <script src="https://webapi.amap.com/maps?v=2.0&key=fa623c2f59ff45c732867521a315132e&plugin=AMap.Driving,AMap.Marker,AMap.InfoWindow,AMap.PlaceSearch,AMap.Geocoder"></script>
+
+    <script>
+        // 全局变量
+        let map = null;
+        let driving = null;
+        let placeSearch = null;
+        let geocoder = null;
+        let companies = [];
+        let optimizedRoute = [];
+        let markers = [];
+        let pendingCompanies = []; // 待确认的公司列表
+        
+        // 待保存的修改（删除和编辑）
+        let pendingChanges = {
+            delete: [], // 待删除的公司ID列表
+            edit: []    // 待编辑的公司列表 {id, newAddress, newLng, newLat}
+        };
+        
+        // 临时编辑标记（用于地图手动选点）
+        let tempEditMarker = null;
+        
+        // 调试日志功能
+        function log(message, type = 'info') {
+            const bottomLogContent = document.getElementById('bottomLogContent');
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('zh-CN', { hour12: false });
+            
+            let color = '#00ff00';
+            let symbol = 'ℹ️';
+            switch(type) {
+                case 'success':
+                    color = '#00ff00';
+                    symbol = '✅';
+                    break;
+                case 'error':
+                    color = '#ff4444';
+                    symbol = '❌';
+                    break;
+                case 'warning':
+                    color = '#ffaa00';
+                    symbol = '⚠️';
+                    break;
+            }
+            
+            if (bottomLogContent) {
+                const entry = document.createElement('div');
+                entry.style.marginBottom = '4px';
+                entry.style.lineHeight = '1.4';
+                entry.innerHTML = `<span style="color: #888;">[${timeStr}]</span> <span style="color: ${color};">${symbol} ${message}</span>`;
+                bottomLogContent.appendChild(entry);
+                bottomLogContent.scrollTop = bottomLogContent.scrollHeight;
+            }
+            
+            // 同时输出到控制台
+            console.log(`[${timeStr}] ${symbol} ${message}`);
+        }
+        
+        // 切换底部日志显示/隐藏
+        function toggleBottomLog() {
+            const content = document.getElementById('bottomLogContent');
+            const toggle = document.getElementById('bottomLogToggle');
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggle.textContent = '▼';
+            } else {
+                content.style.display = 'none';
+                toggle.textContent = '▶';
+            }
+        }
+        
+        // 清空日志
+        function clearLog() {
+            const bottomLogContent = document.getElementById('bottomLogContent');
+            if (bottomLogContent) {
+                bottomLogContent.innerHTML = '';
+            }
+        }
+        
+        // 切换调试日志的展开/收起状态
+        function toggleDebugLog() {
+            const debugLog = document.getElementById('debugLog');
+            if (debugLog.classList.contains('collapsed')) {
+                debugLog.classList.remove('collapsed');
+                debugLog.classList.add('expanded');
+            } else {
+                debugLog.classList.remove('expanded');
+                debugLog.classList.add('collapsed');
+            }
+        }
+        
+        // 初始化地图
+        function initMap() {
+            log('🚀 开始初始化地图...', 'info');
+            
+            try {
+                map = new AMap.Map('container', {
+                    zoom: 11,
+                    center: [116.397428, 39.90923], // 北京中心
+                    viewMode: '2D',
+                    resizeEnable: true
+                });
+                log('✅ 地图初始化成功', 'success');
+                
+                // 初始化驾车路线规划服务
+                driving = new AMap.Driving({
+                    map: map,
+                    panel: null,
+                    hideMarkers: true,
+                    showTraffic: false
+                });
+                log('✅ 驾车规划服务初始化成功', 'success');
+                
+                // 初始化地点搜索服务
+                placeSearch = new AMap.PlaceSearch({
+                    city: '全国',
+                    pageSize: 10,
+                    pageIndex: 1,
+                    extensions: 'all'
+                });
+                log('✅ PlaceSearch服务初始化成功', 'success');
+                
+                // 初始化地址解析服务
+                geocoder = new AMap.Geocoder({
+                    city: '全国'
+                });
+                log('✅ Geocoder服务初始化成功', 'success');
+                
+                showToast('🎉 高德地图加载成功！', 'success');
+                
+                // 加载本地存储的数据
+                loadFromLocalStorage();
+                
+            } catch (error) {
+                console.error('地图初始化失败:', error);
+                log(`❌ 地图初始化失败: ${error.message}`, 'error');
+                showToast('❌ 地图初始化失败，请检查网络连接', 'error');
+            }
+        }
+        
+        // 从地址中提取行政区
+        function extractDistrict(address) {
+            if (!address) return null;
+            // 匹配常见区名（北京）
+            const match = address.match(/(朝阳|顺义|海淀|通州|昌平|大兴|房山|门头沟|石景山|丰台|西城|东城|密云|怀柔|平谷|延庆)区?/);
+            return match ? match[1] : null;
+        }
+        
+        // 计算字符串相似度（简单版）
+        function getSimilarity(str1, str2) {
+            if (!str1 || !str2) return 0;
+            str1 = str1.toLowerCase();
+            str2 = str2.toLowerCase();
+            // 包含关系得分高
+            if (str1.includes(str2) || str2.includes(str1)) return 0.8;
+            // 计算共同子串长度
+            let common = 0;
+            for (let i = 0; i < Math.min(str1.length, str2.length); i++) {
+                if (str1[i] === str2[i]) common++;
+            }
+            return common / Math.max(str1.length, str2.length);
+        }
+        
+        // 对候选结果进行评分和排序
+        function scoreCandidates(pois, inputAddress, companyName) {
+            const inputDistrict = extractDistrict(inputAddress);
+            const inputKeywords = inputAddress.replace(/北京市?/, '').replace(/区/, '').split(/[\s,，]+/).filter(s => s.length > 1);
+            
+            return pois.map((poi, index) => {
+                let score = 0;
+                let reasons = [];
+                let warnings = [];
+                
+                // 使用新的行政区提取函数
+                const poiDistrict = getPoiDistrict(poi);
+                
+                // 1. 行政区匹配（最重要）
+                if (inputDistrict && poiDistrict) {
+                    if (inputDistrict === poiDistrict) {
+                        score += 50;
+                        reasons.push('✅ 行政区匹配');
+                    } else {
+                        score -= 30;
+                        warnings.push(`❌ 与您输入的"${inputDistrict}区"不符（实际为${poiDistrict}区）`);
+                    }
+                } else if (inputDistrict && !poiDistrict) {
+                    // 输入有区但返回没有，扣分但不警告
+                    score -= 10;
+                }
+                
+                // 2. 名称相似度
+                const nameSim = getSimilarity(poi.name, inputAddress);
+                score += nameSim * 20;
+                if (nameSim > 0.5) {
+                    reasons.push('✅ 名称高度相似');
+                }
+                
+                // 3. 详细地址匹配
+                const addressSim = getSimilarity(poi.address, inputAddress);
+                score += addressSim * 15;
+                
+                // 4. 距离当前公司群的中心点距离（如果有其他公司）
+                if (companies.length > 0 && poi.location) {
+                    // 简单判断是否在合理范围
+                    score += 5;
+                }
+                
+                // 5. 结果排序权重（原始排序越靠前，稍微加分）
+                score += Math.max(0, (5 - index) * 2);
+                
+                // 6. 业务类型匹配（如果有）
+                if (poi.type && (poi.type.includes('公司') || poi.type.includes('企业'))) {
+                    score += 5;
+                    reasons.push('✅ 企业类型匹配');
+                }
+                
+                return {
+                    poi: poi,
+                    score: score,
+                    reasons: reasons,
+                    warnings: warnings,
+                    isRecommended: score > 35 && warnings.length === 0
+                };
+            }).sort((a, b) => b.score - a.score);
+        }
+        
+        // 显示候选选择面板
+        function showCandidateSelector(companyName, companyAddress, scoredCandidates) {
+            const inputDistrict = extractDistrict(companyAddress);
+            
+            let html = `
+                <div style="background: white; border-radius: 10px; max-width: 500px; width: 90%; max-height: 70vh; overflow: hidden; display: flex; flex-direction: column;">
+                    <div style="padding: 15px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                        <h3 style="margin: 0; font-size: 16px;">📍 请选择最匹配的位置</h3>
+                        <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.9;">${companyName} - ${companyAddress}</p>
+                    </div>
+                    <div style="padding: 15px; overflow-y: auto; flex: 1;">
+            `;
+            
+            // 是否有推荐的
+            const hasRecommended = scoredCandidates.some(c => c.isRecommended);
+            
+            scoredCandidates.slice(0, 8).forEach((candidate, index) => {
+                const poi = candidate.poi;
+                const district = extractDistrict(poi.address) || extractDistrict(poi.adname) || '未知';
+                
+                // 样式根据推荐程度
+                let borderColor = '#e0e0e0';
+                let bgColor = '#fafafa';
+                let badge = '';
+                
+                if (candidate.isRecommended) {
+                    borderColor = '#10b981';
+                    bgColor = '#ecfdf5';
+                    badge = '<span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 8px;">⭐ 推荐</span>';
+                } else if (candidate.warnings.length > 0) {
+                    borderColor = '#ef4444';
+                    bgColor = '#fef2f2';
+                    badge = '<span style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 8px;">⚠️ 不推荐</span>';
+                }
+                
+                html += `
+                    <div onclick="selectCandidate(${index}, '${companyName.replace(/'/g, "\\'")}', '${companyAddress.replace(/'/g, "\\'")}')" 
+                         style="border: 2px solid ${borderColor}; background: ${bgColor}; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s;"
+                         onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" 
+                         onmouseout="this.style.boxShadow='none'">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="font-weight: 600; color: #333; font-size: 14px;">${poi.name} ${badge}</div>
+                            <div style="font-size: 11px; color: #666; background: #f0f0f0; padding: 2px 6px; border-radius: 4px;">${district}区</div>
+                        </div>
+                        <div style="font-size: 12px; color: #666; margin-top: 6px; line-height: 1.4;">
+                            ${poi.address || '暂无详细地址'}
+                        </div>
+                        ${candidate.reasons.length > 0 ? `<div style="font-size: 11px; color: #059669; margin-top: 6px;">${candidate.reasons.join(' · ')}</div>` : ''}
+                        ${candidate.warnings.length > 0 ? `<div style="font-size: 11px; color: #dc2626; margin-top: 6px;">${candidate.warnings.join(' · ')}</div>` : ''}
+                        <div style="font-size: 11px; color: #999; margin-top: 6px;">
+                            坐标: ${poi.location.lng.toFixed(4)}, ${poi.location.lat.toFixed(4)}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // 如果没有推荐的，提示用户
+            if (!hasRecommended) {
+                html += `
+                    <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 10px; margin: 10px 0; font-size: 12px; color: #856404;">
+                        ⚠️ 未找到与您输入的"${inputDistrict || '指定区域'}"完全匹配的结果。<br>
+                        建议：尝试简化地址关键词，如搜索"兆丰工业园"或"顺义 兆丰"
+                    </div>
+                `;
+            }
+            
+            html += `
+                    </div>
+                    <div style="padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px;">
+                        <button onclick="closeCandidateSelector()" style="flex: 1; padding: 10px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">取消</button>
+                        <button onclick="showManualMapSelector('${companyName.replace(/'/g, "\\'")}')" style="flex: 1; padding: 10px; border: none; background: #667eea; color: white; border-radius: 6px; cursor: pointer;">🗺️ 手动地图选点</button>
+                    </div>
+                </div>
+            `;
+            
+            // 创建或更新模态框
+            let modal = document.getElementById('candidateModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'candidateModal';
+                modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+                document.body.appendChild(modal);
+            }
+            modal.innerHTML = html;
+            modal.style.display = 'flex';
+            
+            // 保存候选数据到全局，供选择时使用
+            window.currentCandidates = scoredCandidates;
+            window.currentCompanyName = companyName;
+            window.currentCompanyAddress = companyAddress;
+        }
+        
+        // 关闭候选选择器
+        function closeCandidateSelector() {
+            const modal = document.getElementById('candidateModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            window.currentCandidates = null;
+        }
+        
+        // 选择候选
+        function selectCandidate(index, companyName, companyAddress) {
+            const candidate = window.currentCandidates[index];
+            if (!candidate) return;
+            
+            const poi = candidate.poi;
+            const company = {
+                id: Date.now(),
+                name: companyName,
+                address: poi.address || companyAddress,
+                lng: poi.location.lng,
+                lat: poi.location.lat
+            };
+            
+            companies.push(company);
+            saveToLocalStorage();
+            renderCompanyList();
+            renderMarkers();
+            
+            // 清空输入框
+            document.getElementById('companyName').value = '';
+            document.getElementById('companyAddress').value = '';
+            
+            closeCandidateSelector();
+            
+            showToast(`✅ 已添加：${poi.name}`, 'success');
+            
+            if (companies.length > 0) {
+                map.setFitView();
+            }
+            
+            log(`✅ 用户选择添加公司：${companyName} - ${poi.name} (${poi.address})`, 'success');
+        }
+        
+        // 显示手动地图选点（简化版）
+        function showManualMapSelector(companyName) {
+            closeCandidateSelector();
+            showToast('🗺️ 请在地图上点击选择位置', 'success');
+            
+            // 添加临时点击监听
+            const clickHandler = function(e) {
+                const lnglat = e.lnglat;
+                
+                const company = {
+                    id: Date.now(),
+                    name: companyName,
+                    address: '手动选点位置',
+                    lng: lnglat.lng,
+                    lat: lnglat.lat
+                };
+                
+                companies.push(company);
+                saveToLocalStorage();
+                renderCompanyList();
+                renderMarkers();
+                
+                document.getElementById('companyName').value = '';
+                document.getElementById('companyAddress').value = '';
+                
+                showToast(`✅ 已添加手动选点：${companyName}`, 'success');
+                
+                // 移除监听
+                map.off('click', clickHandler);
+            };
+            
+            map.on('click', clickHandler);
+            
+            // 5秒后自动取消
+            setTimeout(() => {
+                map.off('click', clickHandler);
+            }, 30000);
+        }
+        
+        // 搜索并添加公司（新版）
+        function searchAndAddCompany(name, address) {
+            const nameInput = document.getElementById('companyName');
+            const addressInput = document.getElementById('companyAddress');
+            
+            const companyName = (name || nameInput.value).trim();
+            const companyAddress = (address || addressInput.value).trim();
+            
+            if (!companyName) {
+                showToast('❌ 请填写公司名称！', 'error');
+                return;
+            }
+            
+            if (!companyAddress) {
+                showToast('❌ 请填写公司地址！', 'error');
+                return;
+            }
+            
+            showLoading(true);
+            log(`🔍 搜索地址：${companyAddress}`, 'info');
+            
+            placeSearch.search(companyAddress, function(status, result) {
+                showLoading(false);
+                
+                if (status === 'complete' && result.poiList && result.poiList.pois.length > 0) {
+                    const pois = result.poiList.pois;
+                    log(`✅ 找到 ${pois.length} 个候选结果`, 'success');
+                    
+                    // 如果只有一个结果且高度匹配，直接添加
+                    if (pois.length === 1) {
+                        const poi = pois[0];
+                        const district = extractDistrict(poi.address);
+                        const inputDistrict = extractDistrict(companyAddress);
+                        
+                        if (!inputDistrict || (district && district === inputDistrict)) {
+                            // 直接添加
+                            const company = {
+                                id: Date.now(),
+                                name: companyName,
+                                address: poi.address || companyAddress,
+                                lng: poi.location.lng,
+                                lat: poi.location.lat
+                            };
+                            companies.push(company);
+                            saveToLocalStorage();
+                            renderCompanyList();
+                            renderMarkers();
+                            
+                            nameInput.value = '';
+                            addressInput.value = '';
+                            
+                            showToast(`✅ 公司添加成功：${poi.name}`, 'success');
+                            
+                            if (companies.length > 0) {
+                                map.setFitView();
+                            }
+                            return;
+                        }
+                    }
+                    
+                    // 多个结果或行政区不匹配，显示选择器
+                    const scoredCandidates = scoreCandidates(pois, companyAddress, companyName);
+                    showCandidateSelector(companyName, companyAddress, scoredCandidates);
+                    
+                } else {
+                    log(`❌ 未找到地址：${companyAddress}`, 'error');
+                    showToast(`❌ 未找到地址：${companyAddress}，请尝试简化关键词`, 'error');
+                }
+            });
+        }
+        
+        // 显示批量导入模态框
+        function showBatchImportModal() {
+            const batchText = document.getElementById('batchImport').value.trim();
+            if (batchText) {
+                document.getElementById('batchImportModal').value = batchText;
+            }
+            document.getElementById('batchModal').style.display = 'flex';
+        }
+        
+        // 关闭批量导入模态框
+        function closeBatchModal() {
+            document.getElementById('batchModal').style.display = 'none';
+            document.getElementById('batchProgress').style.display = 'none';
+            document.getElementById('progressBar').style.width = '0%';
+        }
+        
+        // 全局配置（保存到 localStorage）
+        let appConfig = {
+            importMode: 'strict' // 'strict' = 严格模式(全部确认), 'fast' = 快速模式(自动导入)
+        };
+        
+        // 加载配置
+        function loadConfig() {
+            try {
+                const saved = localStorage.getItem('routePlannerConfig');
+                if (saved) {
+                    appConfig = { ...appConfig, ...JSON.parse(saved) };
+                }
+            } catch (e) {
+                console.error('加载配置失败', e);
+            }
+            
+            // 更新UI状态
+            setTimeout(() => {
+                const radios = document.querySelectorAll('input[name="importMode"]');
+                radios.forEach(radio => {
+                    radio.checked = radio.value === appConfig.importMode;
+                    // 更新父元素样式
+                    const label = radio.closest('label');
+                    if (label) {
+                        if (radio.checked) {
+                            label.style.borderColor = '#667eea';
+                        } else {
+                            label.style.borderColor = '#ddd';
+                        }
+                    }
+                });
+            }, 100);
+        }
+        
+        // 保存配置
+        function saveConfig() {
+            try {
+                localStorage.setItem('routePlannerConfig', JSON.stringify(appConfig));
+            } catch (e) {
+                console.error('保存配置失败', e);
+            }
+        }
+        
+        // 设置导入模式
+        function setImportMode(mode) {
+            appConfig.importMode = mode;
+            saveConfig();
+            showToast(`已切换到${mode === 'strict' ? '严格' : '快速'}模式`, 'success');
+        }
+        
+        // 全局批量导入状态
+        let batchImportState = {
+            isProcessing: false,
+            companiesToImport: [],
+            needConfirm: [],
+            currentIndex: 0,
+            successCount: 0,
+            failCount: 0
+        };
+        
+        // 智能解析分隔符（支持 | , ; \t 以及Excel多列粘贴）
+        function smartParseLine(line) {
+            if (!line || !line.trim()) return null;
+            
+            line = line.trim();
+            
+            // 尝试不同分隔符，优先使用能正确分割成2部分的
+            const separators = [
+                '\t',           // Tab（Excel直接粘贴）
+                '|',            // 竖线
+                '，',           // 中文逗号
+                ',',            // 英文逗号
+                ';',            // 分号
+                '；'            // 中文分号
+            ];
+            
+            for (const sep of separators) {
+                if (line.includes(sep)) {
+                    const parts = line.split(sep);
+                    if (parts.length >= 2) {
+                        const name = parts[0].trim();
+                        // 地址部分可能包含分隔符，重新合并
+                        const address = parts.slice(1).join(sep).trim();
+                        if (name && address) {
+                            return { name, address, separator: sep };
+                        }
+                    }
+                }
+            }
+            
+            // 如果没找到明确分隔符，尝试用空格分割（最后手段）
+            const spaceMatch = line.match(/^(.+?)\s{2,}(.+)$/); // 2个及以上空格
+            if (spaceMatch) {
+                return { name: spaceMatch[1].trim(), address: spaceMatch[2].trim(), separator: '空格' };
+            }
+            
+            return null;
+        }
+        
+        // 处理批量导入（重构版）
+        async function processBatchImport() {
+            const batchText = document.getElementById('batchImportModal').value.trim();
+            
+            log('--- 开始批量导入 ---', 'info');
+            
+            if (!batchText) {
+                log('错误：输入框为空', 'error');
+                showToast('❌ 请输入批量导入数据！', 'error');
+                return;
+            }
+            
+            const lines = batchText.split('\n');
+            log(`📄 解析到 ${lines.length} 行数据`, 'info');
+            
+            // 重置状态
+            batchImportState = {
+                isProcessing: true,
+                companiesToImport: [],
+                needConfirm: [],
+                currentIndex: 0,
+                successCount: 0,
+                failCount: 0
+            };
+            
+            // 解析数据（使用智能分隔符解析）
+            let usedSeparator = null;
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                if (!line.trim()) continue;
+                
+                const parsed = smartParseLine(line);
+                if (parsed) {
+                    if (!usedSeparator) {
+                        usedSeparator = parsed.separator;
+                        log(`检测到分隔符："${usedSeparator}"`, 'info');
+                    }
+                    batchImportState.companiesToImport.push({ 
+                        name: parsed.name, 
+                        address: parsed.address, 
+                        originalLine: line 
+                    });
+                } else {
+                    log(`❌ 第 ${i + 1} 行格式无法识别：${line.substring(0, 50)}`, 'error');
+                }
+            }
+            
+            if (batchImportState.companiesToImport.length === 0) {
+                showToast('❌ 导入数据格式不正确！', 'error');
+                return;
+            }
+            
+            log(`📊 准备导入 ${batchImportState.companiesToImport.length} 家公司`, 'info');
+            
+            // 显示进度条
+            document.getElementById('batchProgress').style.display = 'block';
+            
+            // 开始批量处理
+            await processBatchStep();
+        }
+        
+        // 获取POI的行政区（优先从adname提取）
+        function getPoiDistrict(poi) {
+            // adname 是高德的区域名称字段（如"朝阳区"）
+            return extractDistrict(poi.adname) || 
+                   extractDistrict(poi.address) || 
+                   extractDistrict(poi.pname) ||
+                   extractDistrict(poi.cityname);
+        }
+        
+        // 批量处理步骤
+        async function processBatchStep() {
+            const state = batchImportState;
+            
+            while (state.currentIndex < state.companiesToImport.length) {
+                const company = state.companiesToImport[state.currentIndex];
+                
+                // 更新进度
+                const progress = ((state.currentIndex + 1) / state.companiesToImport.length) * 100;
+                document.getElementById('progressBar').style.width = progress + '%';
+                document.getElementById('progressText').textContent = `处理中 ${state.currentIndex + 1}/${state.companiesToImport.length}...`;
+                
+                log(`🔍 [${state.currentIndex + 1}/${state.companiesToImport.length}] ${company.name}`, 'info');
+                
+                try {
+                    const result = await searchAddressWithFallback(company.address);
+                    
+                    if (result && result.pois && result.pois.length > 0) {
+                        // 评分并检查是否需要确认
+                        const scoredCandidates = scoreCandidates(result.pois, company.address, company.name);
+                        const bestCandidate = scoredCandidates[0];
+                        const inputDistrict = extractDistrict(company.address);
+                        const resultDistrict = getPoiDistrict(bestCandidate.poi);
+                        
+                        log(`  输入行政区：${inputDistrict || '未提取'}，返回行政区：${resultDistrict || '未提取'}`, 'info');
+                        
+                        // 判断是否需要人工确认
+                        // 触发条件：
+                        // 1. 返回的是道路类型（太笼统）
+                        // 2. POI名称 <= 3个字（可能太简略）
+                        // 3. 返回地址中不含数字（没有门牌号）
+                        // 4. 分数较低（< 60）
+                        const poi = bestCandidate.poi;
+                        const isRoadType = poi.type && (poi.type.includes('道路') || poi.type.includes('街路'));
+                        const isShortName = poi.name && poi.name.length <= 3;
+                        const hasNoNumber = !poi.address || !poi.address.match(/[0-9]+/);
+                        const isLowScore = bestCandidate.score < 60;
+                        const needConfirm = isRoadType || isShortName || hasNoNumber || isLowScore;
+                        
+                        if (!needConfirm) {
+                            // 高置信度，直接添加
+                            addCompanyFromPoi(company.name, bestCandidate.poi, company.address);
+                            state.successCount++;
+                            log(`  ✅ 自动导入：${bestCandidate.poi.name} [${resultDistrict}]`, 'success');
+                            state.currentIndex++;
+                        } else {
+                            // 需要确认 - 暂停循环等待用户选择
+                            const reasons = [];
+                            if (isRoadType) reasons.push('道路类型');
+                            if (isShortName) reasons.push('名称简略');
+                            if (hasNoNumber) reasons.push('无门牌号');
+                            if (isLowScore) reasons.push('置信度低');
+                            
+                            log(`  ⚠️ 需要确认（${reasons.join('、')}）：${poi.name} [${resultDistrict}]`, 'warning');
+                            showBatchConfirmAndWait(company, scoredCandidates, (selected) => {
+                                if (selected) {
+                                    companies.push(selected);
+                                    state.successCount++;
+                                    log(`  ✅ 手动选择添加`, 'success');
+                                } else {
+                                    // 用户跳过，加入待确认列表
+                                    addToPendingList(company);
+                                    log(`  ⏭️ 用户跳过，加入待确认列表`, 'warning');
+                                }
+                                state.currentIndex++;
+                                // 继续处理下一个
+                                setTimeout(() => processBatchStep(), 100);
+                            });
+                            return; // 暂停循环，等待回调
+                        }
+                    } else {
+                        log(`  ❌ 未找到地址`, 'error');
+                        state.failCount++;
+                        state.currentIndex++;
+                    }
+                } catch (error) {
+                    log(`  ❌ 搜索失败：${error.message}`, 'error');
+                    state.failCount++;
+                    state.currentIndex++;
+                }
+                
+                // 延迟避免API限制
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            
+            // 全部处理完成
+            batchImportComplete();
+        }
+        
+        // 搜索地址（带备选关键词）
+        function searchAddressWithFallback(address) {
+            return new Promise((resolve) => {
+                // 第一次搜索：完整地址
+                placeSearch.search(address, function(status, result) {
+                    if (status === 'complete' && result.poiList && result.poiList.pois.length > 0) {
+                        resolve({ pois: result.poiList.pois, source: 'original' });
+                    } else {
+                        // 第二次搜索：简化关键词（提取核心地点词）
+                        const simplified = simplifyAddress(address);
+                        log(`  🔄 尝试简化搜索：${simplified}`, 'info');
+                        
+                        placeSearch.search(simplified, function(status2, result2) {
+                            if (status2 === 'complete' && result2.poiList && result2.poiList.pois.length > 0) {
+                                resolve({ pois: result2.poiList.pois, source: 'simplified' });
+                            } else {
+                                resolve(null);
+                            }
+                        });
+                    }
+                });
+            });
+        }
+        
+        // 简化地址关键词
+        function simplifyAddress(address) {
+            // 移除楼层、房间号等细节
+            let simplified = address
+                .replace(/[0-9]+层/g, '')
+                .replace(/[0-9]+室/g, '')
+                .replace(/[0-9]+号/g, '')
+                .replace(/[0-9]+栋/g, '')
+                .replace(/[0-9]+单元/g, '')
+                .replace(/[0-9]+号楼/g, '')
+                .replace(/A[0-9]*座/g, '')
+                .replace(/B[0-9]*座/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+            
+            // 如果还很长，只保留到"路/街/大道"为止
+            const roadMatch = simplified.match(/(.+?[路街道大道])/);
+            if (roadMatch && roadMatch[1].length > 5) {
+                simplified = roadMatch[1];
+            }
+            
+            return simplified || address;
+        }
+        
+        // 从POI添加公司
+        function addCompanyFromPoi(name, poi, fallbackAddress) {
+            const company = {
+                id: Date.now() + Math.random(),
+                name: name,
+                address: poi.address || fallbackAddress,
+                lng: poi.location.lng,
+                lat: poi.location.lat
+            };
+            companies.push(company);
+        }
+        
+        // 显示批量确认并等待用户选择（简化版，无地图预览）
+        function showBatchConfirmAndWait(company, scoredCandidates, callback) {
+            const inputDistrict = extractDistrict(company.address);
+            
+            // 构建弹窗内容
+            let html = `
+                <div style="background: white; border-radius: 10px; max-width: 500px; width: 95%; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
+                    <div style="padding: 15px 20px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
+                        <h3 style="margin: 0; font-size: 16px;">⚠️ 请选择正确位置 (${batchImportState.currentIndex + 1}/${batchImportState.companiesToImport.length})</h3>
+                        <p style="margin: 5px 0 0 0; font-size: 13px; font-weight: 600;">${company.name}</p>
+                        <p style="margin: 3px 0 0 0; font-size: 11px; opacity: 0.9;">输入：${company.address}</p>
+                    </div>
+                    <div style="padding: 15px; overflow-y: auto; flex: 1; max-height: 400px;">
+            `;
+            
+            // 显示候选（最多6个）
+            scoredCandidates.slice(0, 8).forEach((candidate, index) => {
+                const poi = candidate.poi;
+                const district = getPoiDistrict(poi) || '未知';
+                
+                let borderColor = '#e0e0e0';
+                let bgColor = '#fafafa';
+                let badge = '';
+                let icon = '📍';
+                
+                if (candidate.isRecommended) {
+                    borderColor = '#10b981';
+                    bgColor = '#ecfdf5';
+                    badge = '<span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 8px;">⭐ 推荐</span>';
+                    icon = '✅';
+                } else if (candidate.warnings.length > 0) {
+                    borderColor = '#ef4444';
+                    bgColor = '#fef2f2';
+                    badge = '<span style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 8px;">⚠️ 不匹配</span>';
+                    icon = '❌';
+                }
+                
+                html += `
+                    <div id="candidate-${index}" 
+                         style="border: 2px solid ${borderColor}; background: ${bgColor}; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s;"
+                         onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'; this.style.borderColor='#667eea'" 
+                         onmouseout="this.style.boxShadow='none'; this.style.borderColor='${borderColor}'"
+                         onclick="selectBatchCandidate(${index})">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="font-weight: 600; color: #333; font-size: 14px;">${icon} ${poi.name} ${badge}</div>
+                            <div style="font-size: 11px; color: #666; background: #f0f0f0; padding: 2px 8px; border-radius: 4px;">${district}区</div>
+                        </div>
+                        <div style="font-size: 12px; color: #666; margin-top: 6px; line-height: 1.4;">
+                            ${poi.address || '暂无详细地址'}
+                        </div>
+                        ${candidate.reasons.length > 0 ? `<div style="font-size: 11px; color: #059669; margin-top: 6px;">${candidate.reasons.join(' · ')}</div>` : ''}
+                        ${candidate.warnings.length > 0 ? `<div style="font-size: 11px; color: #dc2626; margin-top: 6px;">${candidate.warnings.join(' · ')}</div>` : ''}
+                    </div>
+                `;
+            });
+            
+            // 如果没有推荐结果，提示用户
+            const hasRecommended = scoredCandidates.some(c => c.isRecommended);
+            if (!hasRecommended) {
+                html += `
+                    <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 12px; margin: 10px 0; font-size: 12px; color: #856404;">
+                        <strong>⚠️ 未找到与您输入的"${inputDistrict || '指定区域'}"完全匹配的结果</strong><br>
+                        建议：尝试使用下方搜索框重新搜索
+                    </div>
+                `;
+            }
+            
+            html += `
+                    </div>
+                    <div style="padding: 15px; border-top: 1px solid #eee; background: #f8f9fa;">
+                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <input type="text" id="manualSearchInput" placeholder="重新搜索关键词..." style="flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                            <button onclick="manualSearchInBatch()" style="padding: 8px 16px; border: none; background: #667eea; color: white; border-radius: 4px; font-size: 13px; cursor: pointer;">🔍 搜索</button>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="skipBatchCandidate()" style="flex: 1; padding: 10px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-size: 13px;">⏭️ 跳过此项</button>
+                            <button onclick="stopBatchImport()" style="flex: 1; padding: 10px; border: 1px solid #ef4444; background: #fef2f2; color: #ef4444; border-radius: 6px; cursor: pointer; font-size: 13px;">🛑 结束导入</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 创建模态框（防止事件冒泡）
+            let modal = document.getElementById('batchConfirmModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'batchConfirmModal';
+                modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 10001;';
+                modal.onclick = function(e) {
+                    if (e.target === modal) {
+                        showToast('请点击"跳过此项"或"结束导入"', 'warning');
+                    }
+                };
+                document.body.appendChild(modal);
+            }
+            modal.innerHTML = html;
+            modal.style.display = 'flex';
+            
+            // 保存数据到全局
+            window.batchConfirmCallback = callback;
+            window.batchConfirmCandidates = scoredCandidates;
+            window.batchConfirmCompany = company;
+        }
+        
+        // 选择批量导入的候选
+        function selectBatchCandidate(index) {
+            const candidate = window.batchConfirmCandidates[index];
+            const company = window.batchConfirmCompany;
+            
+            if (!candidate || !candidate.poi) return;
+            
+            // 清除预览标记
+            if (window.previewMarker) {
+                map.remove(window.previewMarker);
+                window.previewMarker = null;
+            }
+            
+            const selected = {
+                id: Date.now() + Math.random(),
+                name: company.name,
+                address: candidate.poi.address || company.address,
+                lng: candidate.poi.location.lng,
+                lat: candidate.poi.location.lat
+            };
+            
+            closeBatchConfirmModal();
+            
+            // 更新界面
+            saveToLocalStorage();
+            renderCompanyList();
+            renderMarkers();
+            
+            if (window.batchConfirmCallback) {
+                window.batchConfirmCallback(selected);
+            }
+        }
+        
+        // 在批量导入中手动搜索
+        function manualSearchInBatch() {
+            const input = document.getElementById('manualSearchInput');
+            const keyword = input.value.trim();
+            
+            if (!keyword) {
+                showToast('请输入搜索关键词', 'warning');
+                return;
+            }
+            
+            log(`🔍 手动搜索：${keyword}`, 'info');
+            
+            placeSearch.search(keyword, function(status, result) {
+                if (status === 'complete' && result.poiList && result.poiList.pois.length > 0) {
+                    const company = window.batchConfirmCompany;
+                    const newCandidates = scoreCandidates(result.poiList.pois, keyword, company.name);
+                    
+                    log(`✅ 找到 ${newCandidates.length} 个新结果`, 'success');
+                    
+                    // 关闭旧弹窗，显示新结果
+                    closeBatchConfirmModal();
+                    showBatchConfirmAndWait(company, newCandidates, window.batchConfirmCallback);
+                } else {
+                    showToast('未找到结果，请尝试其他关键词', 'error');
+                }
+            });
+        }
+        
+        // 跳过批量导入的项
+        function skipBatchCandidate() {
+            // 清除预览标记
+            if (window.previewMarker) {
+                map.remove(window.previewMarker);
+                window.previewMarker = null;
+            }
+            
+            closeBatchConfirmModal();
+            if (window.batchConfirmCallback) {
+                window.batchConfirmCallback(null);
+            }
+        }
+        
+        // 停止批量导入
+        function stopBatchImport() {
+            // 清除预览标记
+            if (window.previewMarker) {
+                map.remove(window.previewMarker);
+                window.previewMarker = null;
+            }
+            
+            closeBatchConfirmModal();
+            batchImportState.isProcessing = false;
+            
+            // 完成当前已处理的
+            batchImportComplete();
+        }
+        
+        // 关闭批量确认模态框
+        function closeBatchConfirmModal() {
+            const modal = document.getElementById('batchConfirmModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // 批量导入完成
+        function batchImportComplete() {
+            const state = batchImportState;
+            const pendingCount = pendingCompanies.length;
+            
+            log('--- 批量导入结束 ---', 'info');
+            log(`✅ 已确认：${state.successCount} 条`, 'success');
+            if (pendingCount > 0) {
+                log(`⏸️ 待确认：${pendingCount} 条（请在公司列表中修改地址）`, 'warning');
+            }
+            
+            // 更新界面
+            saveToLocalStorage();
+            renderCompanyList();
+            renderMarkers();
+            
+            document.getElementById('batchImport').value = '';
+            
+            let message = `已添加 ${state.successCount} 家公司`;
+            if (pendingCount > 0) {
+                message += `，${pendingCount} 家待确认地址`;
+            }
+            showToast(message, pendingCount > 0 ? 'warning' : 'success');
+            
+            if (companies.length > 0) {
+                map.setFitView();
+            }
+            
+            closeBatchModal();
+            document.getElementById('batchProgress').style.display = 'none';
+            
+            // 重置状态
+            batchImportState = {
+                isProcessing: false,
+                companiesToImport: [],
+                needConfirm: [],
+                currentIndex: 0,
+                successCount: 0,
+                failCount: 0
+            };
+        }
+        
+        // 渲染公司列表
+        function renderCompanyList() {
+            const listContainer = document.getElementById('companyList');
+            
+            if (companies.length === 0 && pendingCompanies.length === 0) {
+                listContainer.innerHTML = '<p style="color: #999; text-align: center; padding: 15px; font-size: 12px;">暂无公司信息，请添加或导入</p>';
+                return;
+            }
+            
+            let html = '';
+            
+            // 待确认的公司（放在顶部）
+            if (pendingCompanies.length > 0) {
+                html += '<div style="margin-bottom: 10px; font-size: 11px; color: #f59e0b; font-weight: 600;">⚠️ 地址待确认 (' + pendingCompanies.length + ')</div>';
+                html += pendingCompanies.map((company, index) => `
+                    <div class="company-item" style="border-left-color: #f59e0b; background: #fffbeb;">
+                        <div class="company-info">
+                            <div class="company-name">${company.name}</div>
+                            <div class="company-address" style="color: #d97706;">${company.address}</div>
+                        </div>
+                        <div class="company-actions">
+                            <button class="btn-small" onclick="editPendingCompany(${index})" style="background: #f59e0b; color: white;">修改</button>
+                            <button class="btn-small btn-delete" onclick="deletePendingCompany(${index})">删除</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            // 已确认的公司
+            if (companies.length > 0) {
+                html += '<div style="margin: 15px 0 10px 0; font-size: 11px; color: #667eea; font-weight: 600;">已确认 (' + companies.length + ')</div>';
+                html += companies.map(company => `
+                    <div class="company-item">
+                        <div class="company-info">
+                            <div class="company-name">${company.name}</div>
+                            <div class="company-address">${company.address}</div>
+                        </div>
+                        <div class="company-actions">
+                            <button class="btn-small btn-delete" onclick="deleteCompany(${company.id})">删除</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            listContainer.innerHTML = html;
+        }
+        
+        // 添加到待确认列表
+        function addToPendingList(company) {
+            const exists = pendingCompanies.find(c => c.name === company.name);
+            if (!exists) {
+                pendingCompanies.push({
+                    id: Date.now() + Math.random(),
+                    name: company.name,
+                    address: company.address
+                });
+                saveToLocalStorage();
+                renderCompanyList();
+            }
+        }
+        
+        // 删除待确认公司
+        function deletePendingCompany(index) {
+            if (confirm('确定删除这个待确认的公司吗？')) {
+                pendingCompanies.splice(index, 1);
+                saveToLocalStorage();
+                renderCompanyList();
+            }
+        }
+        
+        // 编辑待确认公司（搜索新地址并导入）
+        function editPendingCompany(index) {
+            const company = pendingCompanies[index];
+            const newAddress = prompt(`请修改 "${company.name}" 的地址：`, company.address);
+            
+            if (!newAddress || newAddress.trim() === '') {
+                return;
+            }
+            
+            showLoading(true);
+            placeSearch.search(newAddress.trim(), function(status, result) {
+                showLoading(false);
+                
+                if (status === 'complete' && result.poiList && result.poiList.pois.length > 0) {
+                    const pois = result.poiList.pois;
+                    const scoredCandidates = scoreCandidates(pois, newAddress, company.name);
+                    
+                    showBatchConfirmAndWait(
+                        { name: company.name, address: newAddress },
+                        scoredCandidates,
+                        (selected) => {
+                            if (selected) {
+                                companies.push(selected);
+                                pendingCompanies.splice(index, 1);
+                                saveToLocalStorage();
+                                renderCompanyList();
+                                renderMarkers();
+                                showToast(`✅ 已添加：${company.name}`, 'success');
+                            }
+                        }
+                    );
+                } else {
+                    showToast('未找到该地址，请检查地址是否正确', 'error');
+                }
+            });
+        }
+        
+        // 渲染地图标记
+        function renderMarkers() {
+            // 清除现有标记
+            markers.forEach(marker => {
+                map.remove(marker);
+            });
+            markers = [];
+            
+            // 如果有优化路线，按照优化路线的顺序编号
+            const getDisplayNumber = (company) => {
+                if (optimizedRoute.length > 0) {
+                    const routeIndex = optimizedRoute.findIndex(c => c.id === company.id);
+                    return routeIndex >= 0 ? routeIndex + 1 : '-';
+                }
+                // 默认按照添加顺序编号
+                const index = companies.findIndex(c => c.id === company.id);
+                return index + 1;
+            };
+            
+            // 添加新标记
+            companies.forEach((company) => {
+                const displayNumber = getDisplayNumber(company);
+                
+                const marker = new AMap.Marker({
+                    position: [company.lng, company.lat],
+                    title: `${company.name}\\n${company.address}`,
+                    label: {
+                        content: `<div style="background: #667eea; color: white; padding: 4px 8px; border-radius: 50%; font-size: 12px; font-weight: bold; min-width: 24px; height: 24px; line-height: 16px; text-align: center; box-sizing: border-box;">${displayNumber}</div>`,
+                        direction: 'top',
+                        offset: new AMap.Pixel(0, -5)
+                    }
+                });
+                
+                // 点击标记显示信息窗口（带编辑/删除按钮）
+                marker.on('click', () => {
+                    showMarkerInfoWindow(company, marker);
+                });
+                
+                markers.push(marker);
+                map.add(marker);
+            });
+            
+            // 显示待保存修改提示
+            
+        }
+        
+        // 显示标记信息窗口（带编辑/删除按钮）
+        function showMarkerInfoWindow(company, marker) {
+            const content = `
+                <div style="padding: 12px; min-width: 200px;">
+                    <h4 style="margin: 0 0 8px 0; font-size: 14px; color: #333;">${company.name}</h4>
+                    <p style="margin: 0 0 12px 0; color: #666; font-size: 12px; line-height: 1.4;">${company.address}</p>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="editCompanyFromMap(${company.id})" style="flex: 1; padding: 6px 12px; border: 1px solid #667eea; background: white; color: #667eea; border-radius: 4px; font-size: 12px; cursor: pointer;">📍 编辑地址</button>
+                        <button onclick="deleteCompanyFromMap(${company.id})" style="flex: 1; padding: 6px 12px; border: 1px solid #ef4444; background: #fef2f2; color: #ef4444; border-radius: 4px; font-size: 12px; cursor: pointer;">🗑️ 删除</button>
+                    </div>
+                </div>
+            `;
+            
+            const infoWindow = new AMap.InfoWindow({
+                content: content,
+                offset: new AMap.Pixel(0, -30)
+            });
+            infoWindow.open(map, marker.getPosition());
+        }
+        
+        // 从地图删除公司（直接删除，不待保存）
+        function deleteCompanyFromMap(companyId) {
+            if (!confirm('确定从路线中删除这个公司吗？')) {
+                return;
+            }
+            
+            // 直接删除
+            companies = companies.filter(c => c.id !== companyId);
+            
+            // 从优化路线中也删除
+            if (optimizedRoute.length > 0) {
+                optimizedRoute = optimizedRoute.filter(c => c.id !== companyId);
+            }
+            
+            // 关闭地图上的信息窗
+            map.clearInfoWindow();
+            
+            // 保存并更新
+            saveToLocalStorage();
+            renderCompanyList();
+            renderMarkers();
+            
+            // 如果有规划结果，更新结果面板
+            if (optimizedRoute.length > 0) {
+                renderDraggableRouteList(optimizedRoute);
+                // 重新规划路线（如果还有足够的点）
+                if (optimizedRoute.length >= 2) {
+                    replanRouteByOrder();
+                } else {
+                    // 点数不够，清空路线
+                    if (driving) driving.clear();
+                    document.getElementById('resultPanel').classList.remove('show');
+                    optimizedRoute = [];
+                }
+            }
+            
+            showToast('✅ 已删除', 'success');
+        }
+        
+        // 从地图编辑公司地址
+        function editCompanyFromMap(companyId) {
+            const company = companies.find(c => c.id === companyId);
+            if (!company) return;
+            
+            // 显示编辑弹窗
+            showEditAddressModal(company);
+        }
+        
+        // 小地图实例（编辑用）
+        let editMiniMap = null;
+        let editMiniMarker = null;
+        
+        // 显示编辑地址弹窗（带小地图）
+        function showEditAddressModal(company) {
+            const html = `
+                <div style="background: white; border-radius: 10px; max-width: 500px; width: 95%;" onclick="event.stopPropagation()">
+                    <div style="padding: 15px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                        <h3 style="margin: 0; font-size: 16px;">📍 修改地址</h3>
+                        <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.9;">${company.name}</p>
+                    </div>
+                    <div style="padding: 20px;">
+                        <div style="margin-bottom: 12px;">
+                            <label style="display: block; margin-bottom: 6px; font-size: 12px; color: #666;">当前地址：${company.address}</label>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                            <input type="text" id="editAddressInput" value="" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; box-sizing: border-box;" placeholder="输入新地址搜索">
+                            <button onclick="searchAddressForMiniMap(${company.id})" style="padding: 10px 16px; border: none; background: #667eea; color: white; border-radius: 4px; cursor: pointer; font-size: 13px; white-space: nowrap;">🔍 搜索</button>
+                        </div>
+                        
+                        <!-- 小地图区域 -->
+                        <div style="margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <label style="font-size: 12px; color: #666;">在地图上点击或拖动调整位置</label>
+                                <span id="miniMapHint" style="font-size: 11px; color: #999;">当前位置</span>
+                            </div>
+                            <div id="editMiniMap" style="width: 100%; height: 200px; border-radius: 8px; border: 2px solid #e0e0e0;"></div>
+                        </div>
+                        
+                        <div id="noResultHint" style="display: none; background: #fef2f2; border: 1px solid #ef4444; border-radius: 6px; padding: 10px; margin-bottom: 12px; font-size: 12px; color: #dc2626;">
+                            ❌ 未找到该地址，请在地图上手动选择
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="closeEditModal()" style="flex: 1; padding: 10px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-size: 13px;">取消</button>
+                            <button onclick="confirmMiniMapSelection(${company.id})" style="flex: 1; padding: 10px; border: none; background: #10b981; color: white; border-radius: 6px; cursor: pointer; font-size: 13px;">✅ 确认选择</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            let modal = document.getElementById('editAddressModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'editAddressModal';
+                modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10002;';
+                modal.onclick = function(e) {
+                    if (e.target === modal) closeEditModal();
+                };
+                document.body.appendChild(modal);
+            }
+            modal.innerHTML = html;
+            modal.style.display = 'flex';
+            
+            // 保存当前编辑的公司ID和坐标
+            window.currentEditCompanyId = company.id;
+            window.currentEditLat = company.lat;
+            window.currentEditLng = company.lng;
+            window.currentEditAddress = company.address;
+            
+            // 初始化小地图
+            setTimeout(() => {
+                initEditMiniMap(company.lng, company.lat);
+            }, 100);
+        }
+        
+        // 初始化编辑小地图
+        function initEditMiniMap(lng, lat) {
+            const container = document.getElementById('editMiniMap');
+            if (!container) return;
+            
+            // 销毁旧地图
+            if (editMiniMap) {
+                editMiniMap.destroy();
+                editMiniMap = null;
+            }
+            
+            // 创建小地图
+            editMiniMap = new AMap.Map('editMiniMap', {
+                zoom: 15,
+                center: [lng, lat],
+                viewMode: '2D'
+            });
+            
+            // 添加可拖动标记
+            editMiniMarker = new AMap.Marker({
+                position: [lng, lat],
+                draggable: true,
+                title: '拖动调整位置',
+                label: {
+                    content: '<div style="background: #667eea; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;">拖动我</div>',
+                    direction: 'top'
+                }
+            });
+            
+            editMiniMap.add(editMiniMarker);
+            
+            // 监听拖动结束
+            editMiniMarker.on('dragend', function(e) {
+                const pos = e.lnglat;
+                window.currentEditLng = pos.lng;
+                window.currentEditLat = pos.lat;
+                
+                // 逆地理编码获取地址
+                const geocoder = new AMap.Geocoder();
+                geocoder.getAddress([pos.lng, pos.lat], function(status, result) {
+                    if (status === 'complete' && result.regeocode) {
+                        window.currentEditAddress = result.regeocode.formattedAddress;
+                        document.getElementById('miniMapHint').textContent = '已手动调整位置';
+                        document.getElementById('miniMapHint').style.color = '#10b981';
+                    }
+                });
+            });
+            
+            // 监听地图点击（点击地图移动标记）
+            editMiniMap.on('click', function(e) {
+                const pos = e.lnglat;
+                editMiniMarker.setPosition(pos);
+                window.currentEditLng = pos.lng;
+                window.currentEditLat = pos.lat;
+                
+                // 逆地理编码
+                const geocoder = new AMap.Geocoder();
+                geocoder.getAddress([pos.lng, pos.lat], function(status, result) {
+                    if (status === 'complete' && result.regeocode) {
+                        window.currentEditAddress = result.regeocode.formattedAddress;
+                        document.getElementById('miniMapHint').textContent = '已选择新位置';
+                        document.getElementById('miniMapHint').style.color = '#10b981';
+                    }
+                });
+            });
+        }
+        
+        // 在小地图中搜索地址
+        function searchAddressForMiniMap(companyId) {
+            const input = document.getElementById('editAddressInput');
+            const address = input.value.trim();
+            
+            if (!address) {
+                showToast('请输入地址', 'warning');
+                return;
+            }
+            
+            showLoading(true);
+            placeSearch.search(address, function(status, result) {
+                showLoading(false);
+                
+                if (status === 'complete' && result.poiList && result.poiList.pois.length > 0) {
+                    const poi = result.poiList.pois[0];
+                    const pos = poi.location;
+                    
+                    // 更新小地图位置
+                    if (editMiniMap && editMiniMarker) {
+                        editMiniMap.setCenter([pos.lng, pos.lat]);
+                        editMiniMarker.setPosition([pos.lng, pos.lat]);
+                    }
+                    
+                    // 保存新坐标
+                    window.currentEditLng = pos.lng;
+                    window.currentEditLat = pos.lat;
+                    window.currentEditAddress = poi.address || poi.name;
+                    
+                    document.getElementById('miniMapHint').textContent = '已定位到：' + poi.name;
+                    document.getElementById('miniMapHint').style.color = '#10b981';
+                    document.getElementById('noResultHint').style.display = 'none';
+                    
+                    showToast('✅ 已找到位置，可拖动标记微调', 'success');
+                } else {
+                    // 显示无结果提示
+                    document.getElementById('noResultHint').style.display = 'block';
+                    showToast('未找到该地址，请在地图上手动选择', 'warning');
+                }
+            });
+        }
+        
+        // 确认小地图选择（直接生效，不待保存）
+        function confirmMiniMapSelection(companyId) {
+            // 直接更新公司信息
+            const company = companies.find(c => c.id === companyId);
+            if (company) {
+                company.address = window.currentEditAddress;
+                company.lng = window.currentEditLng;
+                company.lat = window.currentEditLat;
+                
+                // 保存并更新
+                saveToLocalStorage();
+                renderCompanyList();
+                renderMarkers();
+                
+                // 如果该公司在优化路线中，更新路线
+                if (optimizedRoute.length > 0) {
+                    const routeIndex = optimizedRoute.findIndex(c => c.id === companyId);
+                    if (routeIndex >= 0) {
+                        optimizedRoute[routeIndex] = company;
+                        renderDraggableRouteList(optimizedRoute);
+                        replanRouteByOrder();
+                    }
+                }
+                
+                showToast('✅ 地址已修改', 'success');
+            }
+            
+            closeEditModal();
+            
+            // 关闭地图上的信息窗
+            map.clearInfoWindow();
+        }
+        
+        // 关闭编辑弹窗
+        function closeEditModal() {
+            const modal = document.getElementById('editAddressModal');
+            if (modal) modal.style.display = 'none';
+            
+            // 清除临时标记
+            if (tempEditMarker) {
+                map.remove(tempEditMarker);
+                tempEditMarker = null;
+            }
+        }
+        
+        // 确认编辑地址
+        function confirmEditAddress(companyId) {
+            const manualSelect = document.getElementById('manualSelectCheck').checked;
+            const newAddress = document.getElementById('editAddressInput').value.trim();
+            
+            if (!newAddress) {
+                showToast('请输入新地址', 'error');
+                return;
+            }
+            
+            if (manualSelect) {
+                // 进入手动地图选点模式
+                closeEditModal();
+                enableManualMapSelection(companyId, newAddress);
+            } else {
+                // 搜索新地址
+                searchNewAddressForEdit(companyId, newAddress);
+            }
+        }
+        
+        // 搜索新地址（编辑用）
+        function searchNewAddressForEdit(companyId, address) {
+            showLoading(true);
+            placeSearch.search(address, function(status, result) {
+                showLoading(false);
+                
+                if (status === 'complete' && result.poiList && result.poiList.pois.length > 0) {
+                    const pois = result.poiList.pois;
+                    const company = companies.find(c => c.id === companyId);
+                    const scoredCandidates = scoreCandidates(pois, address, company.name);
+                    
+                    // 关闭编辑弹窗，显示候选选择器
+                    closeEditModal();
+                    showEditCandidateSelector(companyId, scoredCandidates, address);
+                } else {
+                    // 搜索失败，在弹窗内显示提示
+                    showNoResultInEditModal();
+                }
+            });
+        }
+        
+        // 在编辑弹窗内显示无结果提示
+        function showNoResultInEditModal() {
+            const modal = document.getElementById('editAddressModal');
+            if (!modal) return;
+            
+            // 检查是否已有提示
+            let hint = document.getElementById('noResultHint');
+            if (hint) hint.remove();
+            
+            // 添加提示到弹窗内
+            const content = modal.querySelector('div > div:nth-child(2)');
+            if (content) {
+                hint = document.createElement('div');
+                hint.id = 'noResultHint';
+                hint.style.cssText = 'background: #fef2f2; border: 1px solid #ef4444; border-radius: 6px; padding: 12px; margin: 15px 0; font-size: 13px; color: #dc2626;';
+                hint.innerHTML = `
+                    <div style="font-weight: 600; margin-bottom: 4px;">❌ 未找到该地址</div>
+                    <div style="font-size: 12px;">建议：勾选"手动在地图上点选"，直接在地图上定位</div>
+                `;
+                content.insertBefore(hint, content.querySelector('div:last-child'));
+            }
+        }
+        
+        // 显示编辑候选选择器
+        function showEditCandidateSelector(companyId, scoredCandidates, searchAddress) {
+            const company = companies.find(c => c.id === companyId);
+            
+            let html = `
+                <div style="background: white; border-radius: 10px; max-width: 500px; width: 95%; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
+                    <div style="padding: 15px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                        <h3 style="margin: 0; font-size: 16px;">选择新地址</h3>
+                        <p style="margin: 5px 0 0 0; font-size: 12px;">${company.name} - ${searchAddress}</p>
+                    </div>
+                    <div style="padding: 15px; overflow-y: auto; flex: 1; max-height: 400px;">
+            `;
+            
+            scoredCandidates.slice(0, 8).forEach((candidate, index) => {
+                const poi = candidate.poi;
+                const district = getPoiDistrict(poi) || '未知';
+                
+                let borderColor = '#e0e0e0';
+                let bgColor = '#fafafa';
+                let badge = '';
+                
+                if (candidate.isRecommended) {
+                    borderColor = '#10b981';
+                    bgColor = '#ecfdf5';
+                    badge = '<span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 8px;">⭐ 推荐</span>';
+                }
+                
+                html += `
+                    <div onclick="selectEditCandidate(${companyId}, ${index})" 
+                         style="border: 2px solid ${borderColor}; background: ${bgColor}; border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s;"
+                         onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'" 
+                         onmouseout="this.style.boxShadow='none'">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="font-weight: 600; color: #333; font-size: 14px;">${poi.name} ${badge}</div>
+                            <div style="font-size: 11px; color: #666; background: #f0f0f0; padding: 2px 8px; border-radius: 4px;">${district}区</div>
+                        </div>
+                        <div style="font-size: 12px; color: #666; margin-top: 6px; line-height: 1.4;">
+                            ${poi.address || '暂无详细地址'}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `
+                    </div>
+                    <div style="padding: 15px; border-top: 1px solid #eee; background: #f8f9fa;">
+                        <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 10px; margin-bottom: 12px; font-size: 12px; color: #856404;">
+                            💡 如果以上地址都不正确，点击下方按钮手动在地图上选择
+                        </div>
+                        <button onclick="switchToManualSelect(${companyId}, '${searchAddress.replace(/'/g, "\\'")}')" style="width: 100%; padding: 10px; border: 1px solid #667eea; background: white; color: #667eea; border-radius: 6px; cursor: pointer; font-size: 13px;">🗺️ 手动在地图上选点</button>
+                    </div>
+                </div>
+            `;
+            
+            let modal = document.getElementById('editCandidateModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'editCandidateModal';
+                modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10003;';
+                modal.onclick = function(e) {
+                    if (e.target === modal) {
+                        modal.style.display = 'none';
+                    }
+                };
+                document.body.appendChild(modal);
+            }
+            modal.innerHTML = html;
+            modal.style.display = 'flex';
+            
+            window.editCandidates = scoredCandidates;
+            window.currentEditCompanyId = companyId;
+        }
+        
+        // 选择编辑候选
+        function selectEditCandidate(companyId, index) {
+            const candidate = window.editCandidates[index];
+            const poi = candidate.poi;
+            
+            // 添加到待编辑列表
+            const existingEdit = pendingChanges.edit.find(e => e.id === companyId);
+            if (existingEdit) {
+                existingEdit.newAddress = poi.address || poi.name;
+                existingEdit.newLng = poi.location.lng;
+                existingEdit.newLat = poi.location.lat;
+            } else {
+                pendingChanges.edit.push({
+                    id: companyId,
+                    newAddress: poi.address || poi.name,
+                    newLng: poi.location.lng,
+                    newLat: poi.location.lat
+                });
+            }
+            
+            // 关闭弹窗
+            const modal = document.getElementById('editCandidateModal');
+            if (modal) modal.style.display = 'none';
+            
+            // 更新界面
+            renderCompanyListWithPending();
+            renderMarkersWithPending();
+            
+            
+            showToast('已标记修改，请点击"保存修改"生效', 'success');
+        }
+        
+        // 切换到手动选择
+        function switchToManualSelect(companyId, address) {
+            // 关闭候选选择弹窗
+            const candidateModal = document.getElementById('editCandidateModal');
+            if (candidateModal) candidateModal.style.display = 'none';
+            
+            // 关闭编辑地址弹窗（如果还开着）
+            const editModal = document.getElementById('editAddressModal');
+            if (editModal) editModal.style.display = 'none';
+            
+            enableManualMapSelection(companyId, address);
+        }
+        
+        // 启用手动地图选择（可拖动）
+        function enableManualMapSelection(companyId, address) {
+            showToast('🗺️ 请在地图上点击选择位置，可拖动微调', 'success', 5000);
+            
+            // 点击地图放置标记
+            const clickHandler = function(e) {
+                const lnglat = e.lnglat;
+                
+                // 清除之前的临时标记
+                if (tempEditMarker) {
+                    map.remove(tempEditMarker);
+                }
+                
+                // 创建可拖动的临时标记
+                tempEditMarker = new AMap.Marker({
+                    position: lnglat,
+                    draggable: true,
+                    title: '拖动调整位置',
+                    label: {
+                        content: '<div style="background: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">拖动调整</div>',
+                        direction: 'top'
+                    }
+                });
+                
+                map.add(tempEditMarker);
+                
+                // 直接生效，不弹出确认
+                setTimeout(() => {
+                    const finalPosition = tempEditMarker.getPosition();
+                    
+                    // 直接更新公司信息
+                    const company = companies.find(c => c.id === companyId);
+                    if (company) {
+                        company.address = address + ' (手动选点)';
+                        company.lng = finalPosition.lng;
+                        company.lat = finalPosition.lat;
+                        
+                        // 保存并更新
+                        saveToLocalStorage();
+                        renderCompanyList();
+                        renderMarkers();
+                        
+                        // 如果该公司在优化路线中，更新路线
+                        if (optimizedRoute.length > 0) {
+                            const routeIndex = optimizedRoute.findIndex(c => c.id === companyId);
+                            if (routeIndex >= 0) {
+                                optimizedRoute[routeIndex] = company;
+                                renderDraggableRouteList(optimizedRoute);
+                                replanRouteByOrder();
+                            }
+                        }
+                        
+                        showToast('✅ 位置已更新', 'success');
+                    }
+                    
+                    // 清理
+                    map.off('click', clickHandler);
+                    map.remove(tempEditMarker);
+                    tempEditMarker = null;
+                    
+                    // 关闭地图上的信息窗
+                    map.clearInfoWindow();
+                }, 100);
+            };
+            
+            map.on('click', clickHandler);
+            
+            // 30秒后自动取消
+            setTimeout(() => {
+                map.off('click', clickHandler);
+                if (tempEditMarker && !pendingChanges.edit.find(e => e.id === companyId)) {
+                    map.remove(tempEditMarker);
+                    tempEditMarker = null;
+                }
+            }, 30000);
+        }
+        
+        // 显示带待修改标记的公司列表
+        function renderCompanyListWithPending() {
+            const listContainer = document.getElementById('companyList');
+            
+            // 过滤掉待删除的
+            const visibleCompanies = companies.filter(c => !pendingChanges.delete.includes(c.id));
+            
+            // 标记待编辑的
+            const getCompanyDisplay = (company) => {
+                const editInfo = pendingChanges.edit.find(e => e.id === company.id);
+                if (editInfo) {
+                    return {
+                        ...company,
+                        address: editInfo.newAddress + ' (待修改)',
+                        _isPendingEdit: true
+                    };
+                }
+                return company;
+            };
+            
+            const displayCompanies = visibleCompanies.map(getCompanyDisplay);
+            
+            // 渲染逻辑（类似原renderCompanyList但使用displayCompanies）
+            // ... 这里复用原来的渲染逻辑
+            renderCompanyListWithData(displayCompanies);
+        }
+        
+        // 使用指定数据渲染公司列表
+        function renderCompanyListWithData(data) {
+            const listContainer = document.getElementById('companyList');
+            
+            if (data.length === 0 && pendingCompanies.length === 0) {
+                listContainer.innerHTML = '<p style="color: #999; text-align: center; padding: 15px; font-size: 12px;">暂无公司信息，请添加或导入</p>';
+                return;
+            }
+            
+            let html = '';
+            
+            // 待确认的公司
+            if (pendingCompanies.length > 0) {
+                html += '<div style="margin-bottom: 10px; font-size: 11px; color: #f59e0b; font-weight: 600;">⚠️ 地址待确认 (' + pendingCompanies.length + ')</div>';
+                html += pendingCompanies.map((company, index) => `
+                    <div class="company-item" style="border-left-color: #f59e0b; background: #fffbeb;">
+                        <div class="company-info">
+                            <div class="company-name">${company.name}</div>
+                            <div class="company-address" style="color: #d97706;">${company.address}</div>
+                        </div>
+                        <div class="company-actions">
+                            <button class="btn-small" onclick="editPendingCompany(${index})" style="background: #f59e0b; color: white;">修改</button>
+                            <button class="btn-small btn-delete" onclick="deletePendingCompany(${index})">删除</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            // 已确认的公司（含待修改标记）
+            if (data.length > 0) {
+                html += '<div style="margin: 15px 0 10px 0; font-size: 11px; color: #667eea; font-weight: 600;">已确认 (' + data.length + ')</div>';
+                html += data.map(company => `
+                    <div class="company-item" style="${company._isPendingEdit ? 'border-left-color: #667eea; background: #eef2ff;' : ''}">
+                        <div class="company-info">
+                            <div class="company-name">${company.name}</div>
+                            <div class="company-address" style="${company._isPendingEdit ? 'color: #667eea;' : ''}">${company.address}</div>
+                        </div>
+                        <div class="company-actions">
+                            <button class="btn-small btn-delete" onclick="deleteCompany(${company.id})">删除</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            listContainer.innerHTML = html;
+        }
+        
+        // 显示带待修改标记的地图标记
+        function renderMarkersWithPending() {
+            // 清除现有标记
+            markers.forEach(marker => {
+                map.remove(marker);
+            });
+            markers = [];
+            
+            // 过滤掉待删除的
+            const visibleCompanies = companies.filter(c => !pendingChanges.delete.includes(c.id));
+            
+            // 应用待编辑的坐标
+            const displayCompanies = visibleCompanies.map(company => {
+                const editInfo = pendingChanges.edit.find(e => e.id === company.id);
+                if (editInfo) {
+                    return {
+                        ...company,
+                        lng: editInfo.newLng,
+                        lat: editInfo.newLat,
+                        address: editInfo.newAddress,
+                        _isPendingEdit: true
+                    };
+                }
+                return company;
+            });
+            
+            // 重新渲染标记（使用displayCompanies）
+            const getDisplayNumber = (company) => {
+                if (optimizedRoute.length > 0) {
+                    const routeIndex = optimizedRoute.findIndex(c => c.id === company.id);
+                    return routeIndex >= 0 ? routeIndex + 1 : '-';
+                }
+                const index = displayCompanies.findIndex(c => c.id === company.id);
+                return index + 1;
+            };
+            
+            displayCompanies.forEach((company) => {
+                const displayNumber = getDisplayNumber(company);
+                const isPendingEdit = company._isPendingEdit;
+                
+                const marker = new AMap.Marker({
+                    position: [company.lng, company.lat],
+                    title: `${company.name}\\n${company.address}`,
+                    label: {
+                        content: `<div style="background: ${isPendingEdit ? '#f59e0b' : '#667eea'}; color: white; padding: 4px 8px; border-radius: 50%; font-size: 12px; font-weight: bold; min-width: 24px; height: 24px; line-height: 16px; text-align: center; box-sizing: border-box;">${displayNumber}</div>`,
+                        direction: 'top',
+                        offset: new AMap.Pixel(0, -5)
+                    }
+                });
+                
+                marker.on('click', () => {
+                    showMarkerInfoWindow(company, marker);
+                });
+                
+                markers.push(marker);
+                map.add(marker);
+            });
+        }
+        
+        // 注：已移除待保存机制，所有修改直接生效
+        
+        // 删除公司
+        function deleteCompany(id) {
+            companies = companies.filter(c => c.id !== id);
+            saveToLocalStorage();
+            renderCompanyList();
+            renderMarkers();
+            showToast('🗑️ 公司删除成功！', 'success');
+            
+            // 清除优化路线
+            optimizedRoute = [];
+            
+            // 隐藏结果面板
+            document.getElementById('resultPanel').classList.remove('show');
+            
+            // 清除路线
+            if (driving) {
+                driving.clear();
+            }
+        }
+        
+        // 清空所有数据
+        function clearAll() {
+            if (!confirm('确定要清空所有公司数据吗？')) {
+                return;
+            }
+            
+            companies = [];
+            optimizedRoute = [];
+            saveToLocalStorage();
+            renderCompanyList();
+            
+            // 清除标记
+            markers.forEach(marker => {
+                map.remove(marker);
+            });
+            markers = [];
+            
+            // 清除路线
+            if (driving) {
+                driving.clear();
+            }
+            
+            // 隐藏结果面板
+            document.getElementById('resultPanel').classList.remove('show');
+            
+            showToast('🗑️ 所有数据已清空！', 'success');
+        }
+        
+        // 规划路线（TSP算法 + 高德路径规划）
+        function planRoute() {
+            if (companies.length < 2) {
+                showToast('❌ 请至少添加2家公司才能规划路线！', 'error');
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                // 使用算法优化路线顺序
+                optimizedRoute = optimizeRoute(companies);
+                
+                // 调用高德驾车路径规划
+                plotDrivingRoute(optimizedRoute);
+                
+                showToast('🚀 路线规划完成！', 'success');
+            } catch (error) {
+                console.error('路线规划失败:', error);
+                showToast(`❌ 路线规划失败: ${error.message}`, 'error');
+            }
+            
+            showLoading(false);
+        }
+        
+        // 优化路线算法（贪心 + 2-opt）
+        function optimizeRoute(companies) {
+            if (companies.length === 0) return [];
+            
+            // 计算两点间的大圆距离
+            function calculateDistance(point1, point2) {
+                const R = 6371; // 地球半径，单位km
+                const dLat = (point2.lat - point1.lat) * Math.PI / 180;
+                const dLon = (point2.lng - point1.lng) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                        Math.cos(point1.lat * Math.PI / 180) * Math.cos(point2.lat * Math.PI / 180) *
+                        Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+            }
+            
+            // 贪心算法初始化
+            let route = [companies[0]];
+            let remaining = [...companies.slice(1)];
+            
+            while (remaining.length > 0) {
+                let current = route[route.length - 1];
+                let nearestIndex = 0;
+                let minDistance = Infinity;
+                
+                for (let i = 0; i < remaining.length; i++) {
+                    const dist = calculateDistance(current, remaining[i]);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        nearestIndex = i;
+                    }
+                }
+                
+                route.push(remaining[nearestIndex]);
+                remaining.splice(nearestIndex, 1);
+            }
+            
+            // 2-opt优化
+            let improved = true;
+            let iterations = 0;
+            const maxIterations = 100;
+            
+            while (improved && iterations < maxIterations) {
+                improved = false;
+                iterations++;
+                
+                for (let i = 1; i < route.length - 1; i++) {
+                    for (let j = i + 1; j < route.length; j++) {
+                        const newRoute = twoOptSwap(route, i, j);
+                        if (calculateTotalDistance(newRoute) < calculateTotalDistance(route)) {
+                            route = newRoute;
+                            improved = true;
+                        }
+                    }
+                }
+            }
+            
+            return route;
+        }
+        
+        // 2-opt交换
+        function twoOptSwap(route, i, j) {
+            const newRoute = route.slice(0, i);
+            const reversed = route.slice(i, j + 1).reverse();
+            const remaining = route.slice(j + 1);
+            return [...newRoute, ...reversed, ...remaining];
+        }
+        
+        // 计算路线总距离
+        function calculateTotalDistance(route) {
+            function calculateDistance(point1, point2) {
+                const R = 6371;
+                const dLat = (point2.lat - point1.lat) * Math.PI / 180;
+                const dLon = (point2.lng - point1.lng) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                        Math.cos(point1.lat * Math.PI / 180) * Math.cos(point2.lat * Math.PI / 180) *
+                        Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+            }
+            
+            let total = 0;
+            for (let i = 0; i < route.length - 1; i++) {
+                total += calculateDistance(route[i], route[i + 1]);
+            }
+            return total;
+        }
+        
+        // 绘制驾车路线
+        function plotDrivingRoute(route) {
+            if (!driving) {
+                throw new Error('驾车规划服务未初始化');
+            }
+            
+            // 清除之前的路线
+            driving.clear();
+            
+            // 调试：打印所有坐标
+            log(`📍 规划路线，共 ${route.length} 个点:`, 'info');
+            route.forEach((c, i) => {
+                log(`  ${i+1}. ${c.name}: [${c.lng}, ${c.lat}]`, 'info');
+            });
+            
+            // 过滤掉坐标无效的点
+            const validRoute = route.filter(company => {
+                const hasCoords = company.lng !== undefined && company.lat !== undefined;
+                const isNumber = typeof company.lng === 'number' && typeof company.lat === 'number';
+                const isValid = hasCoords && isNumber && !isNaN(company.lng) && !isNaN(company.lat);
+                const inRange = isValid && company.lng >= -180 && company.lng <= 180 && 
+                               company.lat >= -90 && company.lat <= 90;
+                
+                if (!isValid) {
+                    log(`⚠️ 跳过无效坐标: ${company.name} [lng:${company.lng}, lat:${company.lat}]`, 'warning');
+                } else if (!inRange) {
+                    log(`⚠️ 坐标超出范围: ${company.name} [${company.lng}, ${company.lat}]`, 'warning');
+                }
+                return isValid && inRange;
+            });
+            
+            log(`✅ 有效坐标: ${validRoute.length}/${route.length} 个`, validRoute.length > 0 ? 'success' : 'error');
+            
+            if (validRoute.length < 2) {
+                showToast('❌ 有效地址不足2个，无法规划路线', 'error');
+                return;
+            }
+            
+            if (validRoute.length < route.length) {
+                showToast(`⚠️ 有 ${route.length - validRoute.length} 个地址无效，已跳过`, 'warning');
+            }
+            
+            // 更新优化路线为有效路线
+            optimizedRoute = validRoute;
+            
+            // 构建途经点
+            const waypoints = validRoute.slice(1, -1).map(company => 
+                new AMap.LngLat(company.lng, company.lat)
+            );
+            
+            // 调用高德驾车路径规划
+            driving.search(
+                new AMap.LngLat(validRoute[0].lng, validRoute[0].lat), // 起点
+                new AMap.LngLat(validRoute[validRoute.length - 1].lng, validRoute[validRoute.length - 1].lat), // 终点
+                { waypoints: waypoints },
+                (status, result) => {
+                    if (status === 'complete') {
+                        // 更新标记编号（按照优化路线顺序）
+                        renderMarkers();
+                        // 显示结果
+                        displayResult(result, validRoute);
+                    } else {
+                        console.error('驾车规划失败:', status, result);
+                        showToast('❌ 驾车路径规划失败，部分地址可能无法到达', 'error');
+                    }
+                }
+            );
+        }
+        
+        // 显示结果
+        function displayResult(result, route) {
+            if (result.routes && result.routes.length > 0) {
+                const routeData = result.routes[0];
+                const totalDistance = (routeData.distance / 1000).toFixed(2); // 转换为公里
+                const totalTime = Math.round(routeData.time / 60); // 转换为分钟
+                
+                document.getElementById('totalDistance').textContent = totalDistance;
+                document.getElementById('totalTime').textContent = totalTime;
+                
+                renderDraggableRouteList(route);
+                
+                document.getElementById('resultPanel').classList.add('show');
+            }
+        }
+        
+        // 渲染可拖拽的路线列表
+        function renderDraggableRouteList(route) {
+            const routeList = document.getElementById('routeList');
+            
+            routeList.innerHTML = route.map((company, index) => `
+                <li class="route-item" draggable="true" data-index="${index}" data-id="${company.id}" style="cursor: move;">
+                    <div class="route-number">${index + 1}</div>
+                    <div class="route-info" style="flex: 1;">
+                        <div class="route-name">${company.name}</div>
+                        <div class="route-address">${company.address}</div>
+                    </div>
+                    <div style="color: #999; font-size: 16px; margin-left: 8px;">☰</div>
+                </li>
+            `).join('');
+            
+            // 添加拖拽事件
+            let draggedItem = null;
+            let draggedIndex = null;
+            
+            routeList.querySelectorAll('.route-item').forEach(item => {
+                // 拖拽开始
+                item.addEventListener('dragstart', function(e) {
+                    draggedItem = this;
+                    draggedIndex = parseInt(this.dataset.index);
+                    this.style.opacity = '0.5';
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+                
+                // 拖拽结束
+                item.addEventListener('dragend', function(e) {
+                    this.style.opacity = '1';
+                    draggedItem = null;
+                    draggedIndex = null;
+                    
+                    // 移除所有高亮
+                    routeList.querySelectorAll('.route-item').forEach(li => {
+                        li.style.borderTop = '';
+                        li.style.borderBottom = '';
+                    });
+                });
+                
+                // 拖拽经过
+                item.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    
+                    if (this === draggedItem) return;
+                    
+                    const rect = this.getBoundingClientRect();
+                    const midY = rect.top + rect.height / 2;
+                    
+                    // 高亮放置位置
+                    if (e.clientY < midY) {
+                        this.style.borderTop = '3px solid #667eea';
+                        this.style.borderBottom = '';
+                    } else {
+                        this.style.borderTop = '';
+                        this.style.borderBottom = '3px solid #667eea';
+                    }
+                });
+                
+                // 拖拽离开
+                item.addEventListener('dragleave', function(e) {
+                    this.style.borderTop = '';
+                    this.style.borderBottom = '';
+                });
+                
+                // 放置
+                item.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    
+                    if (this === draggedItem) return;
+                    
+                    const dropIndex = parseInt(this.dataset.index);
+                    
+                    // 重新排序 optimizedRoute
+                    const newRoute = [...optimizedRoute];
+                    const [removed] = newRoute.splice(draggedIndex, 1);
+                    
+                    // 确定插入位置
+                    const rect = this.getBoundingClientRect();
+                    const midY = rect.top + rect.height / 2;
+                    let insertIndex = dropIndex;
+                    
+                    if (draggedIndex < dropIndex && e.clientY < midY) {
+                        insertIndex = dropIndex - 1;
+                    } else if (draggedIndex > dropIndex && e.clientY > midY) {
+                        insertIndex = dropIndex + 1;
+                    }
+                    
+                    newRoute.splice(insertIndex, 0, removed);
+                    
+                    // 更新优化路线
+                    optimizedRoute = newRoute;
+                    
+                    // 重新渲染
+                    renderDraggableRouteList(optimizedRoute);
+                    renderMarkers();
+                    
+                    // 重新规划驾车路线（按新顺序）
+                    replanRouteByOrder();
+                    
+                    showToast('✅ 路线顺序已调整', 'success');
+                });
+            });
+        }
+        
+        // 按新顺序重新规划路线
+        function replanRouteByOrder() {
+            if (!driving || optimizedRoute.length < 2) return;
+            
+            // 过滤无效坐标
+            const validRoute = optimizedRoute.filter(company => 
+                company.lng && company.lat && !isNaN(company.lng) && !isNaN(company.lat)
+            );
+            
+            if (validRoute.length < 2) {
+                showToast('❌ 有效地址不足，无法重新规划', 'error');
+                return;
+            }
+            
+            driving.clear();
+            
+            const waypoints = validRoute.slice(1, -1).map(company => 
+                new AMap.LngLat(company.lng, company.lat)
+            );
+            
+            driving.search(
+                new AMap.LngLat(validRoute[0].lng, validRoute[0].lat),
+                new AMap.LngLat(validRoute[validRoute.length - 1].lng, validRoute[validRoute.length - 1].lat),
+                { waypoints: waypoints },
+                (status, result) => {
+                    if (status === 'complete') {
+                        // 更新距离和时间显示
+                        if (result.routes && result.routes.length > 0) {
+                            const routeData = result.routes[0];
+                            document.getElementById('totalDistance').textContent = (routeData.distance / 1000).toFixed(2);
+                            document.getElementById('totalTime').textContent = Math.round(routeData.time / 60);
+                        }
+                    } else {
+                        console.error('重新规划失败:', status);
+                        showToast('❌ 重新规划路线失败', 'error');
+                    }
+                }
+            );
+        }
+        
+        // 本地存储功能
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem('routePlannerCompanies', JSON.stringify(companies));
+                localStorage.setItem('routePlannerPending', JSON.stringify(pendingCompanies));
+            } catch (error) {
+                console.error('保存到本地存储失败:', error);
+            }
+        }
+        
+        function loadFromLocalStorage() {
+            try {
+                const saved = localStorage.getItem('routePlannerCompanies');
+                if (saved) {
+                    companies = JSON.parse(saved);
+                }
+                
+                const savedPending = localStorage.getItem('routePlannerPending');
+                if (savedPending) {
+                    pendingCompanies = JSON.parse(savedPending);
+                }
+                
+                renderCompanyList();
+                renderMarkers();
+                
+                if (companies.length > 0 || pendingCompanies.length > 0) {
+                    setTimeout(() => {
+                        map.setFitView();
+                    }, 1000);
+                }
+            } catch (error) {
+                console.error('从本地存储加载失败:', error);
+            }
+        }
+        
+        // 显示加载状态
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            if (show) {
+                loading.classList.add('show');
+            } else {
+                loading.classList.remove('show');
+            }
+        }
+        
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+        
+        // 页面加载完成后初始化
+        window.onload = function() {
+            // 加载配置
+            loadConfig();
+            
+            // 等待高德地图API加载完成
+            if (typeof AMap !== 'undefined') {
+                initMap();
+            } else {
+                showToast('🔄 高德地图API加载中...', 'success');
+                const checkInterval = setInterval(() => {
+                    if (typeof AMap !== 'undefined') {
+                        clearInterval(checkInterval);
+                        initMap();
+                    }
+                }, 500);
+            }
+        };
+        
+        // 快速添加公司（支持同名覆盖）
+        function quickAddCompany() {
+            const nameInput = document.getElementById('quickCompanyName');
+            const addressInput = document.getElementById('quickCompanyAddress');
+            
+            const companyName = nameInput.value.trim();
+            const companyAddress = addressInput.value.trim();
+            
+            if (!companyName) {
+                showToast('❌ 请填写公司名称！', 'error');
+                return;
+            }
+            
+            if (!companyAddress) {
+                showToast('❌ 请填写公司地址！', 'error');
+                return;
+            }
+            
+            // 检查是否已存在同名公司
+            const existingIndex = companies.findIndex(c => c.name === companyName);
+            const isUpdate = existingIndex >= 0;
+            
+            showLoading(true);
+            
+            placeSearch.search(companyAddress, function(status, result) {
+                showLoading(false);
+                
+                if (status === 'complete' && result.poiList && result.poiList.pois.length > 0) {
+                    const scoredCandidates = scoreCandidates(result.poiList.pois, companyAddress, companyName);
+                    const bestCandidate = scoredCandidates[0];
+                    
+                    const newCompany = {
+                        id: isUpdate ? companies[existingIndex].id : Date.now(),
+                        name: companyName,
+                        address: bestCandidate.poi.address || companyAddress,
+                        lng: bestCandidate.poi.location.lng,
+                        lat: bestCandidate.poi.location.lat
+                    };
+                    
+                    if (isUpdate) {
+                        // 覆盖更新
+                        companies[existingIndex] = newCompany;
+                        log(`✅ 更新公司：${companyName}`, 'success');
+                        showToast(`✅ 已更新：${companyName}`, 'success');
+                    } else {
+                        // 新增
+                        companies.push(newCompany);
+                        log(`✅ 新增公司：${companyName}`, 'success');
+                        showToast(`✅ 已添加：${companyName}`, 'success');
+                    }
+                    
+                    saveToLocalStorage();
+                    renderCompanyList();
+                    renderMarkers();
+                    
+                    // 清空输入
+                    nameInput.value = '';
+                    addressInput.value = '';
+                    
+                    if (companies.length > 0) {
+                        map.setFitView();
+                    }
+                } else {
+                    showToast(`❌ 未找到地址：${companyAddress}`, 'error');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
