@@ -12,18 +12,14 @@
 
 ## 在线体验
 
-### GitHub Pages（国内可能不稳定）
-https://yang1996202-cpu.github.io/route-planner/
+https://route-planner-8tm.pages.dev/
 
-### Cloudflare Worker（推荐）
-https://route-planner.yang1996202.workers.dev/
-
-Worker 版本将高德 API Key 隐藏在服务端，更安全。
+国内可直接访问，无需翻墙。
 
 ## 快速开始
 
-### 方式一：直接打开（GitHub Pages）
-1. 访问上面的 GitHub Pages 链接
+### 方式一：直接打开
+1. 访问 https://route-planner-8tm.pages.dev/
 2. 在左侧输入公司信息，格式：`公司名,地址`
 3. 点击"规划最优路线"
 
@@ -35,28 +31,17 @@ cd route-planner
 open index.html
 ```
 
-### 方式三：Cloudflare Worker 部署
-```bash
-cd route-planner-worker
-npx wrangler deploy
-```
-
-需要配置环境变量：
-- `AMAP_KEY`：高德地图 Web 服务 Key
-- `AMAP_SECURITY_KEY`：高德地图安全密钥
-
 ## 技术栈
 
 - **前端**：原生 HTML + CSS + JavaScript
 - **地图**：高德地图 JS API 2.0
-- **部署**：GitHub Pages / Cloudflare Workers
+- **部署**：Cloudflare Pages
 - **算法**：最近邻算法（Nearest Neighbor）计算近似最优路径
 
 ## 注意事项
 
 1. 高德 API Key 已配置域名白名单，仅限指定域名调用
-2. GitHub Pages 版本在国内访问可能较慢，建议使用 Cloudflare Worker 版本
-3. 路线规划采用贪心算法，对于少量坐标点（<20）效果良好
+2. 路线规划采用贪心算法，对于少量坐标点（<20）效果良好
 
 ## License
 
